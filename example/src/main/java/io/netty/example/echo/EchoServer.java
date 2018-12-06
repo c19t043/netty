@@ -40,6 +40,7 @@ public final class EchoServer {
 
     public static void main(String[] args) throws Exception {
         // Configure SSL.
+        //配置SSL
         final SslContext sslCtx;
         if (SSL) {
             SelfSignedCertificate ssc = new SelfSignedCertificate();
@@ -49,18 +50,28 @@ public final class EchoServer {
         }
 
         // Configure the server.
+        //创建两个EventLoopGroup对象
+        //创建 boss线程组，用于服务端接受客户端连接
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        //创建worker线程组，用于SocketChannel的数据读写
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        //创建EchoServerHandler对象
         final EchoServerHandler serverHandler = new EchoServerHandler();
         try {
+            //创建ServerBootstrap对象
             ServerBootstrap b = new ServerBootstrap();
+            //设置使用的EventLoopGroup
             b.group(bossGroup, workerGroup)
+                    //设置nio模式处理io
              .channel(NioServerSocketChannel.class)
+                    //设置待处理连接队列，最大个数为100
              .option(ChannelOption.SO_BACKLOG, 100)
+                    //打服务端info级别系统日志,用于打印服务端的每个事件
              .handler(new LoggingHandler(LogLevel.INFO))
              .childHandler(new ChannelInitializer<SocketChannel>() {
                  @Override
                  public void initChannel(SocketChannel ch) throws Exception {
+                     //设置连入服务端的client，SocketChannel的处理器
                      ChannelPipeline p = ch.pipeline();
                      if (sslCtx != null) {
                          p.addLast(sslCtx.newHandler(ch.alloc()));
@@ -71,12 +82,15 @@ public final class EchoServer {
              });
 
             // Start the server.
+            //绑定端口，并阻塞等待，即启动服务器
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.
+            //监听服务端关闭，并阻塞等待
             f.channel().closeFuture().sync();
         } finally {
             // Shut down all event loops to terminate all threads.
+            // 优雅关闭两个EventLoopGroup
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
